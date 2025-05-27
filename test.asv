@@ -1,0 +1,56 @@
+
+number_of_subcarrier_pre_symbol_per=12;
+number_of_transmit_antenna=1;
+number_of_receive_antenna = 1;
+%Pilot_Generator(number_of_subcarrier_pre_symbol_per,number_of_transmit_antenna)
+
+numBits = 10000; % 比特数量
+FFTLength = 2048; %106*12; % 子载波数量
+CP = 144; % 循环前缀长度
+M=16;
+Nsym=1;
+pilot_sym_num=1;
+
+
+
+%raw_data = randi([0 1], numBits, 1); %% Generating random data bits
+%data = repmat(data,N * log2(M),1);
+guard_band = [floor(FFTLength * 0.10); floor(FFTLength * 0.10)];
+data_subcarrier_bit_num_per_sym = (FFTLength-sum(guard_band))* log2(M);
+data_subcarrier_num_per_sym = (FFTLength-sum(guard_band));
+
+%%%%%%%%%%%%%%%%%导频生成%%%%%%%%%%%%%%%%%%%%%%%%
+pilot_subcarrier_indices=[guard_band(1)+1:3:FFTLength-guard_band(2)];
+
+pilot_subcarrier_bit_num_per_sym = length(pilot_subcarrier_indices)*2;  %% 导频bit
+pilot_subcarrier =  randi([0 1], pilot_subcarrier_bit_num_per_sym*pilot_sym_num*number_of_transmit_antenna,1);
+pilot_signal = qammod(pilot_subcarrier,4,'InputType','bit','UnitAveragePower',true);
+%%%%%%%%%%%%%%%%%%%%%%%%%导频生成%%%%%%%%%%%%%%%%%%%%%%%%%
+
+data = randi([0 1], data_subcarrier_bit_num_per_sym*Nsym*number_of_transmit_antenna-length(pilot_signal)*log2(M)*pilot_sym_num,1);
+tx_signal = qammod(data,M,'InputType','bit','UnitAveragePower',true);
+
+datareshape = reshape(tx_signal, [data_subcarrier_num_per_sym-length(pilot_signal),Nsym,number_of_transmit_antenna]);
+
+ofdmMod = comm.OFDMModulator('FFTLength',FFTLength,'CyclicPrefixLength',CP,'NumGuardBandCarriers',guard_band, ...
+    'NumSymbols',Nsym,'NumTransmitAntennas',  number_of_transmit_antenna,'PilotCarrierIndices', pilot_subcarrier_indices.', ...
+    'PilotInputPort', true);
+
+ofdmDemod = comm.OFDMDemodulator('FFTLength',FFTLength,'CyclicPrefixLength',CP,'NumGuardBandCarriers',guard_band, ...
+    'NumSymbols',Nsym, 'NumReceiveAntennas', number_of_receive_antenna,'PilotCarrierIndices', pilot_subcarrier_indices.', ...
+    'PilotOutputPort', true);
+
+ofdmData = step(ofdmMod, datareshape,pilot_signal);
+
+[ofdmDataOut,channel_path_gain] = step(ofdmDemod, ofdmData);
+demoudellr = qamdemod(ofdmDataOut, M,'OutputType','bit','UnitAveragePower',true);
+%%%%%%%%%%%%%导频输出%%%%%%%%%%%%%%%%%%%%%%%%%%
+demodpilot = qamdemod(channel_path_gain, 4,'OutputType','bit','UnitAveragePower',true);
+pi
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+datasend=reshape(data, [data_subcarrier_bit_num_per_sym*Nsym*number_of_transmit_antenna-length(pilot_signal)*log2(M)*pilot_sym_num,Nsym,number_of_transmit_antenna]);
+isequal(demoudellr,datasend)
+
+
+
