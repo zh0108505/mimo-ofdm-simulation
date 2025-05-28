@@ -1,24 +1,26 @@
 SNR_dB = -20:2:40;        % 信噪比范围
 
-err_array = zeros(length(SNR_dB),1)
+err_array = zeros(length(SNR_dB),1);
 M=16;
 number_of_bits_per_frame = 1000;
 System_initialize
 for k = 1:length(SNR_dB)
     SNR = SNR_dB(k);
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%发送%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%发送 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%发送bit 生成%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     raw_data = logical(randi([0 1], number_of_bits_per_frame, 1)); %% Generating random data bits
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%CRC+ldpc+mode%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     crc_coded_data = step(crc_24_generator, raw_data); %% Adding CRC bits for error checking
     ldpc_extra_bits = ldpc_num_bits - length(crc_coded_data);
     ldpc_data = [crc_coded_data; randi([0 1], ldpc_extra_bits, 1)];
     ldpc_encoded_data = ldpc_encoder(ldpc_data);
     tx_signal = qammod(ldpc_encoded_data,M,'InputType','bit','UnitAveragePower',true);
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%发送%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  
   
     %%%%%%%%%%%%%%%%%%%%%%%%%信道%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    tx_signal = awgn_channel(tx_signal,Noise_Var(SNR));
+   % tx_signal = awgn_channel(tx_signal,Noise_Var(SNR));
     %%%%%%%%%%%%%%%%%%%%%%%%%信道%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%接收%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -33,11 +35,11 @@ for k = 1:length(SNR_dB)
         disp("error")
     end
     
-    isequal(crc_decoded_data,raw_data);
+    isequal(crc_decoded_data,raw_data)
     [num, err] = biterr(crc_decoded_data,raw_data)  ;
     err_array(k) = err;
 end
 
-semilogy(SNR_dB,err_array)
+%semilogy(SNR_dB,err_array)
   
 

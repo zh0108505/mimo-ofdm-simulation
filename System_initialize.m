@@ -31,11 +31,11 @@ ldpc_num_bits = ldpc_config.NumInformationBits;
 
 %%% Initializing modulation parameters
 
-Constellation = qammod([0:63],64,'UnitAveragePower',true);
-hQAMMod = comm.GeneralQAMModulator(Constellation); 
+%Constellation = qammod([0:63],64,'UnitAveragePower',true);
+%hQAMMod = comm.GeneralQAMModulator(Constellation); 
 
-hQAMDeMod = comm.GeneralQAMDemodulator(Constellation,'DecisionMethod','Hard decision')
-hSoftQAMDeMod = comm.GeneralQAMDemodulator(Constellation,'BitOutput',true,'DecisionMethod','Log-likelihood ratio');
+%hQAMDeMod = comm.GeneralQAMDemodulator(Constellation,'DecisionMethod','Hard decision')
+%hSoftQAMDeMod = comm.GeneralQAMDemodulator(Constellation,'BitOutput',true,'DecisionMethod','Log-likelihood ratio');
 
 %%% Initializing modulation parameters
 
