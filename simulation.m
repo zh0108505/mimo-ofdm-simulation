@@ -39,32 +39,31 @@ for k = 1:1%length(SNR_dB)
         data_transfer_per_slot, Nsym, number_of_transmit_antenna);
         [pilot_signal,pilot_bit] = Pilot_Generator(guard_band,pilot_subcarrier_indices,pilot_sym_num,FFTLength,number_of_transmit_antenna);
         pilot_bit_tmp = [pilot_bit_tmp;pilot_bit];
-        %%%%%%%%%%%%%%%%%OFDM 调制解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%%%%%%%%%%%%%%%%OFDM 调制%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         ofdmData = step(ofdmMod, reshaped_modulated_data,pilot_signal);
 
+        %%%%%%%%%%%%%%%%%%%%%%%%%信道%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % tx_signal = awgn_channel(tx_signal,Noise_Var(SNR));
+
+        %%%%%%%%%%%%%%%%%OFDM 解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         [ofdmDataOut,ofdmDmrsOut] = step(ofdmDemod, ofdmData);
         ofdmDataOuttmp = [ofdmDataOuttmp;ofdmDataOut(:)];
         ofdmDmrsOutTmp = [ofdmDmrsOutTmp;ofdmDmrsOut(:)];
 
     end
 
-        %datasend_bit = qamdemod(ofdmDmrsOutTmp, M,'OutputType','bit','UnitAveragePower',true);
+    %datasend_bit = qamdemod(ofdmDmrsOutTmp, M,'OutputType','bit','UnitAveragePower',true);
 
-        %%%%%%%%%%%%%%%%%%%%OFDM 调制解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        demoudebit = qamdemod(ofdmDataOuttmp(1:length(tx_signal_tmp)), M,'OutputType','bit','UnitAveragePower',true);
-        demodpilot = qamdemod(ofdmDmrsOutTmp, 4,'OutputType','bit','UnitAveragePower',true);
-        isequal(ldpc_encoded_data,demoudebit)
-        isequal(demodpilot,pilot_bit_tmp)
+    %%%%%%%%%%%%%%%%%%%%QAM 信号解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    demoudebit = qamdemod(ofdmDataOuttmp(1:length(tx_signal_tmp)), M,'OutputType','bit','UnitAveragePower',true);
+    demodpilot = qamdemod(ofdmDmrsOutTmp, 4,'OutputType','bit','UnitAveragePower',true);
+    isequal(ldpc_encoded_data,demoudebit)
+    isequal(demodpilot,pilot_bit_tmp)
 
+    demoudellr = qamdemod(ofdmDataOuttmp(1:length(tx_signal_tmp)), M,'OutputType','llr','UnitAveragePower',true);
   
-        demoudellr = qamdemod(ofdmDataOuttmp(1:length(tx_signal_tmp)), M,'OutputType','llr','UnitAveragePower',true);
-    %%%%%%%%%%%%%%%%%%%%%%%%%信道%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   % tx_signal = awgn_channel(tx_signal,Noise_Var(SNR));
-    %%%%%%%%%%%%%%%%%%%%%%%%%信道%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%接收%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- 
-    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%LDPC CRC %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
     ldpc_decoded_data = ldpc_decoder(demoudellr); %% Decoding the data bits using convolutional decoder
     ldpc_useful_data = ldpc_decoded_data(1:length(crc_coded_data), 1); %% Filtering the decoded data bits
     isequal(ldpc_decoded_data,ldpc_data)
