@@ -5,8 +5,7 @@ number_of_bits_per_frame = 32300;
 ldpc_decode_data_tmp =[];
 ofdmDataOuttmp = [];
 ofdmDmrsOutTmp = [];
-tx_signal_tmp = [];
-pilot_bit_tmp = [];
+tx_signal
 
 %%%%%%%%%%%%%%%参数初始化end%%%%%%%%%%%%%%%%%%%%%
 
@@ -24,8 +23,7 @@ for k = 1:1%length(SNR_dB)
     ldpc_extra_bits = ldpc_num_bits - length(crc_coded_data);
     ldpc_data = [crc_coded_data; randi([0 1], ldpc_extra_bits, 1)];
     ldpc_encoded_data = ldpc_encoder(ldpc_data);
-    tx_signal_tmp = qammod(ldpc_encoded_data,M,'InputType','bit','UnitAveragePower',true);
-    tx_signal = tx_signal_tmp;
+    tx_signal = qammod(ldpc_encoded_data,M,'InputType','bit','UnitAveragePower',true);
 
 
 
@@ -38,26 +36,27 @@ for k = 1:1%length(SNR_dB)
         reshaped_modulated_data = reshape(tx_signal((((turn - 1) * data_transfer_per_slot) + 1):(turn * data_transfer_per_slot), 1), ...
         data_transfer_per_slot, Nsym, number_of_transmit_antenna);
         [pilot_signal,pilot_bit] = Pilot_Generator(guard_band,pilot_subcarrier_indices,pilot_sym_num,FFTLength,number_of_transmit_antenna);
-        pilot_bit_tmp = [pilot_bit_tmp;pilot_bit];
+       
         %%%%%%%%%%%%%%%%%OFDM 调制解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         ofdmData = step(ofdmMod, reshaped_modulated_data,pilot_signal);
 
         [ofdmDataOut,ofdmDmrsOut] = step(ofdmDemod, ofdmData);
         ofdmDataOuttmp = [ofdmDataOuttmp;ofdmDataOut(:)];
-        ofdmDmrsOutTmp = [ofdmDmrsOutTmp;ofdmDmrsOut(:)];
+        ofdmDmrsOutTmp = [ofdmDmrsOutTmp;ofdmDmrsOut(:)]
 
     end
 
-        %datasend_bit = qamdemod(ofdmDmrsOutTmp, M,'OutputType','bit','UnitAveragePower',true);
+        datasend_bit = qamdemod(ofdmDmrsOutTmp, M,'OutputType','bit','UnitAveragePower',true);
 
         %%%%%%%%%%%%%%%%%%%%OFDM 调制解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        demoudebit = qamdemod(ofdmDataOuttmp(1:length(tx_signal_tmp)), M,'OutputType','bit','UnitAveragePower',true);
-        demodpilot = qamdemod(ofdmDmrsOutTmp, 4,'OutputType','bit','UnitAveragePower',true);
-        isequal(ldpc_encoded_data,demoudebit)
-        isequal(demodpilot,pilot_bit_tmp)
+        demoudellr = qamdemod(ofdmDataOuttmp, M,'OutputType','bit','UnitAveragePower',true);
+        demodpilot = qamdemod(channel_path_gain, 4,'OutputType','bit','UnitAveragePower',true);
 
-  
-        demoudellr = qamdemod(ofdmDataOuttmp(1:length(tx_signal_tmp)), M,'OutputType','llr','UnitAveragePower',true);
+        isequal(demodpilot,pilot_bit)
+        if(isequal(demoudellr,datasend_bit)==0)
+               disp("NO EQ")
+        end
+        ldpc_decode_data_tmp = [ldpc_decode_data_tmp;demoudellr(:)];
     %%%%%%%%%%%%%%%%%%%%%%%%%信道%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    % tx_signal = awgn_channel(tx_signal,Noise_Var(SNR));
     %%%%%%%%%%%%%%%%%%%%%%%%%信道%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -65,7 +64,7 @@ for k = 1:1%length(SNR_dB)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%接收%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  
     
-    ldpc_decoded_data = ldpc_decoder(demoudellr); %% Decoding the data bits using convolutional decoder
+    ldpc_decoded_data = ldpc_decoder(ldpc_decode_data_tmp(1:length(ldpc_encoded_data))); %% Decoding the data bits using convolutional decoder
     ldpc_useful_data = ldpc_decoded_data(1:length(crc_coded_data), 1); %% Filtering the decoded data bits
     isequal(ldpc_decoded_data,ldpc_data)
     [crc_decoded_data, frame_error] = step(crc_24_detector, ldpc_useful_data); %% Detecting frame error using CRC detector

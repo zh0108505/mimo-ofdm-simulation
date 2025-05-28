@@ -9,9 +9,11 @@ pilot_sym_num=1;
 guard_band = [floor(FFTLength * 0.10); floor(FFTLength * 0.10)];
 data_subcarrier_bit_num_per_sym = (FFTLength-sum(guard_band))* log2(M);
 data_subcarrier_num_per_sym = (FFTLength-sum(guard_band));
+
 number_of_transmit_antenna=1;
 number_of_receive_antenna = 1;
 pilot_subcarrier_indices=[guard_band(1)+1:3:FFTLength-guard_band(2)];
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
