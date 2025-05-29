@@ -1,18 +1,20 @@
 %%%%%%%%%%%%%%参数初始化start%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-SNR_dB = -20:2:40;        % 信噪比范围
+SNR_dB = -20:2:80;        % 信噪比范围
 err_array = zeros(length(SNR_dB),1);
+err_array_before_ldpc = zeros(length(SNR_dB),1);
 number_of_bits_per_frame = 32300;
-ldpc_decode_data_tmp =[];
-ofdmDataOuttmp = [];
-ofdmDmrsOutTmp = [];
-tx_signal_tmp = [];
-pilot_bit_tmp = [];
+
 
 %%%%%%%%%%%%%%%参数初始化end%%%%%%%%%%%%%%%%%%%%%
 
 
 System_initialize
-for k = 1:1%length(SNR_dB)
+for k = 1:length(SNR_dB)
+    ldpc_decode_data_tmp =[];
+    ofdmDataOuttmp = [];
+    ofdmDmrsOutTmp = [];
+    tx_signal_tmp = [];
+    pilot_bit_tmp = [];
     SNR = SNR_dB(k);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%发送 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -26,7 +28,7 @@ for k = 1:1%length(SNR_dB)
     ldpc_encoded_data = ldpc_encoder(ldpc_data);
     tx_signal_tmp = qammod(ldpc_encoded_data,M,'InputType','bit','UnitAveragePower',true);
     tx_signal = tx_signal_tmp;
-
+    %scatterplot(tx_signal);
 
 
     data_transfer_per_slot = data_subcarrier_num_per_sym*Nsym-length(pilot_subcarrier_indices)*pilot_sym_num;
@@ -45,7 +47,8 @@ for k = 1:1%length(SNR_dB)
         ofdmData = step(ofdmMod, reshaped_modulated_data,pilot_signal);
 
         %%%%%%%%%%%%%%%%%%%%%%%%%信道%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % tx_signal = awgn_channel(tx_signal,Noise_Var(SNR));
+       ofdmData = awgn_channel(ofdmData,Noise_Var(SNR));
+        %ofdmData = awgn(ofdmData, SNR);
 
         %%%%%%%%%%%%%%%%%OFDM 解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         [ofdmDataOut,ofdmDmrsOut] = step(ofdmDemod, ofdmData);
@@ -59,7 +62,8 @@ for k = 1:1%length(SNR_dB)
     %%%%%%%%%%%%%%%%%%%%QAM 信号解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     demoudebit = qamdemod(ofdmDataOuttmp(1:length(tx_signal_tmp)), M,'OutputType','bit','UnitAveragePower',true);
     demodpilot = qamdemod(ofdmDmrsOutTmp, 4,'OutputType','bit','UnitAveragePower',true);
-
+    [num, err] = biterr(ldpc_encoded_data,demoudebit,1);
+    err_array_before_ldpc(k) = err;
     fprintf("ldpc encode bit :%d\n",isequal(ldpc_encoded_data,demoudebit))
     fprintf("dmrs bit :%d\n",isequal(ldpc_encoded_data,demoudebit))
 
@@ -70,18 +74,22 @@ for k = 1:1%length(SNR_dB)
     ldpc_decoded_data = ldpc_decoder(demoudellr); %% Decoding the data bits using convolutional decoder
     ldpc_useful_data = ldpc_decoded_data(1:length(crc_coded_data), 1); %% Filtering the decoded data bits
     fprintf("ldpc dcode bit :%d\n", isequal(ldpc_decoded_data,ldpc_data))
+
+    [num, err] = biterr(ldpc_decoded_data,ldpc_data,1)  ;
+    err_array(k) = err;
     [crc_decoded_data, frame_error] = step(crc_24_detector, ldpc_useful_data); %% Detecting frame error using CRC detector
+
 
     if frame_error == 1
         disp("error")
     end
-    
-    
+     
     fprintf("crc bit :%d\n", isequal(crc_decoded_data,raw_data))
-    [num, err] = biterr(crc_decoded_data,raw_data)  ;
-    err_array(k) = err;
 end
 
-%semilogy(SNR_dB,err_array)
+semilogy(SNR_dB,err_array,'r-.s', 'LineWidth', 1); hold on;
+semilogy(SNR_dB,err_array_before_ldpc, 'b-*', 'LineWidth', 1);
+legend('16QAM','16QAM+LDPC','Location', 'southWest');
+xlabel('SNR (dB)'); ylabel('BER');
   
 
