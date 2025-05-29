@@ -1,3 +1,8 @@
+
+close all;
+clc;
+clear; 
+
 %%%%%%%%%%%%%%参数初始化start%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SNR_dB = -20:2:80;        % 信噪比范围
 err_array = zeros(length(SNR_dB),1);
@@ -47,7 +52,10 @@ for k = 1:length(SNR_dB)
         ofdmData = step(ofdmMod, reshaped_modulated_data,pilot_signal);
 
         %%%%%%%%%%%%%%%%%%%%%%%%%信道%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       ofdmData = awgn_channel(ofdmData,Noise_Var(SNR));
+        signal_power = 10*log10(var(ofdmData)); %% Calculating signal power 数组方差
+        noise_variance = (10.^(0.1.*(signal_power - SNR))) * 1; %% Calculating noise variance
+
+        ofdmData = awgn_channel(ofdmData,noise_variance);
         %ofdmData = awgn(ofdmData, SNR);
 
         %%%%%%%%%%%%%%%%%OFDM 解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
