@@ -30,15 +30,17 @@ for k = 1:1%length(SNR_dB)
 
 
     data_transfer_per_slot = data_subcarrier_num_per_sym*Nsym-length(pilot_subcarrier_indices)*pilot_sym_num;
-    
+    data_subcarrier_num_per_sym_exclude_dmrs = data_subcarrier_num_per_sym-length(pilot_subcarrier_indices);
     slot_num_need_to_trans = ceil(length(tx_signal)/data_transfer_per_slot);
     tx_signal = [tx_signal; complex(zeros(data_transfer_per_slot * slot_num_need_to_trans - length(tx_signal), 1))];
     
     for turn = 1:slot_num_need_to_trans
         reshaped_modulated_data = reshape(tx_signal((((turn - 1) * data_transfer_per_slot) + 1):(turn * data_transfer_per_slot), 1), ...
-        data_transfer_per_slot, Nsym, number_of_transmit_antenna);
+        data_subcarrier_num_per_sym_exclude_dmrs, Nsym, number_of_transmit_antenna);
         [pilot_signal,pilot_bit] = Pilot_Generator(guard_band,pilot_subcarrier_indices,pilot_sym_num,FFTLength,number_of_transmit_antenna);
         pilot_bit_tmp = [pilot_bit_tmp;pilot_bit];
+
+        pilot_signal = reshape(pilot_signal, length(pilot_subcarrier_indices), pilot_sym_num,number_of_transmit_antenna);
         %%%%%%%%%%%%%%%%%OFDM 调制%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         ofdmData = step(ofdmMod, reshaped_modulated_data,pilot_signal);
 
@@ -57,8 +59,9 @@ for k = 1:1%length(SNR_dB)
     %%%%%%%%%%%%%%%%%%%%QAM 信号解调%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     demoudebit = qamdemod(ofdmDataOuttmp(1:length(tx_signal_tmp)), M,'OutputType','bit','UnitAveragePower',true);
     demodpilot = qamdemod(ofdmDmrsOutTmp, 4,'OutputType','bit','UnitAveragePower',true);
-    isequal(ldpc_encoded_data,demoudebit)
-    isequal(demodpilot,pilot_bit_tmp)
+
+    fprintf("ldpc encode bit :%d\n",isequal(ldpc_encoded_data,demoudebit))
+    fprintf("dmrs bit :%d\n",isequal(ldpc_encoded_data,demoudebit))
 
     demoudellr = qamdemod(ofdmDataOuttmp(1:length(tx_signal_tmp)), M,'OutputType','llr','UnitAveragePower',true);
   
@@ -66,14 +69,15 @@ for k = 1:1%length(SNR_dB)
 
     ldpc_decoded_data = ldpc_decoder(demoudellr); %% Decoding the data bits using convolutional decoder
     ldpc_useful_data = ldpc_decoded_data(1:length(crc_coded_data), 1); %% Filtering the decoded data bits
-    isequal(ldpc_decoded_data,ldpc_data)
+    fprintf("ldpc dcode bit :%d\n", isequal(ldpc_decoded_data,ldpc_data))
     [crc_decoded_data, frame_error] = step(crc_24_detector, ldpc_useful_data); %% Detecting frame error using CRC detector
 
     if frame_error == 1
         disp("error")
     end
     
-    isequal(crc_decoded_data,raw_data)
+    
+    fprintf("crc bit :%d\n", isequal(crc_decoded_data,raw_data))
     [num, err] = biterr(crc_decoded_data,raw_data)  ;
     err_array(k) = err;
 end
